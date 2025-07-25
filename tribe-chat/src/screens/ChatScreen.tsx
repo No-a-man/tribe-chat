@@ -11,7 +11,8 @@ export default function ChatScreen() {
     const prev = messages[index - 1];
     const sameSender = prev?.participantUuid === item.participantUuid;
     const author = participants.find(p => p.uuid === item.participantUuid);
-
+    console.log("Messages length:", messages.length);
+    console.log("Participants:", participants);
     return (
       <View style={styles.messageBlock}>
         {!sameSender && (
