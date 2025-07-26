@@ -5,8 +5,8 @@ import { api } from '../api/api';
 interface Message {
   uuid: string;
   text: string;
-  participantUuid: string;
-  createdAt: number;
+  authorUuid: string;
+  sentAt: number;
   editedAt?: number;
   attachment?: { imageUrl: string };
 }
