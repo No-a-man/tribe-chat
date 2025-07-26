@@ -2,14 +2,25 @@ import {create} from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../api/api';
 
+interface Reaction {
+  uuid: string;
+  participantUuid: string;
+  value: string; 
+}
+
 interface Message {
   uuid: string;
-  text: string;
   authorUuid: string;
+  text: string;
   sentAt: number;
   editedAt?: number;
-  attachment?: { imageUrl: string };
+  attachment?: {
+    imageUrl?: string;
+  };
+  reactions?: Reaction[]; 
+  updatedAt: number
 }
+
 
 interface MessageState {
   list: Message[];

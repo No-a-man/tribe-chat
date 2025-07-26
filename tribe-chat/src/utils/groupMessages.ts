@@ -2,15 +2,22 @@
 
 // Assuming your Message interface looks something like this:
 // (It's good practice to define this in a shared types file)
+interface Reaction {
+  uuid: string;
+  participantUuid: string;
+  value: string; 
+}
 interface Message {
   uuid: string;
   authorUuid: string; // The ID of the sender
   text: string;
-  sentAt: number; // Timestamp (e.g., milliseconds since epoch)
+  sentAt: number; 
   editedAt?: number;
   attachment?: {
     imageUrl?: string;  
   };
+reactions?: Reaction[]; 
+  updatedAt: number;
 }
 
 /**

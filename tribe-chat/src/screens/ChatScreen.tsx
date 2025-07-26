@@ -5,6 +5,12 @@ import { useParticipantStore } from '../stores/participantStore';
 import { groupMessages } from '../utils/groupMessages';
 
 // Interfaces (can be moved to src/types/index.ts)
+interface Reaction {
+  uuid: string;
+  participantUuid: string;
+  value: string; 
+}
+
 interface Message {
   uuid: string;
   authorUuid: string;
@@ -14,7 +20,11 @@ interface Message {
   attachment?: {
     imageUrl?: string;
   };
+  reactions?: Reaction[];
+    updatedAt: number;
+
 }
+
 
 interface Participant {
   uuid: string;
@@ -63,25 +73,52 @@ export default function ChatScreen() {
 
           </View>
         )}
-        {messageGroup.map((msg, msgIndex) => (
-          <View
-            key={msg.uuid}
-            style={[
-              styles.bubble,
-              isOwnGroup ? styles.ownBubble : styles.otherBubble,
-              msgIndex > 0 && (isOwnGroup ? styles.ownConsecutiveBubble : styles.otherConsecutiveBubble),
-              msgIndex === 0 && (isOwnGroup ? styles.ownFirstBubble : styles.otherFirstBubble),
-              msgIndex === messageGroup.length - 1 && (isOwnGroup ? styles.ownLastBubble : styles.otherLastBubble),
-            ]}
-          >
-            <Text style={isOwnGroup ? styles.ownMessageText : styles.otherMessageText}>
-              {msg.text} {msg.editedAt ? <Text style={styles.edited}>(edited)</Text> : null}
-            </Text>
-            {msg.attachment?.imageUrl && (
-              <Image source={{ uri: msg.attachment.imageUrl }} style={styles.image} />
-            )}
-          </View>
-        ))}
+{messageGroup.map((msg, msgIndex) => {
+  const hasReactions = msg.reactions && msg.reactions.length > 0;
+
+  return (
+    <View
+      key={msg.uuid}
+      style={[
+        styles.messageWrapper,
+        hasReactions && styles.messageWithReactionsSpacing,
+      ]}
+    >
+      <View
+        style={[
+          styles.bubble,
+          isOwnGroup ? styles.ownBubble : styles.otherBubble,
+          msgIndex > 0 && (isOwnGroup ? styles.ownConsecutiveBubble : styles.otherConsecutiveBubble),
+          msgIndex === 0 && (isOwnGroup ? styles.ownFirstBubble : styles.otherFirstBubble),
+          msgIndex === messageGroup.length - 1 && (isOwnGroup ? styles.ownLastBubble : styles.otherLastBubble),
+        ]}
+      >
+        <Text style={isOwnGroup ? styles.ownMessageText : styles.otherMessageText}>
+          {msg.text} {msg.editedAt ? <Text style={styles.edited}>(edited)</Text> : null}
+        </Text>
+
+        {msg.attachment?.imageUrl && (
+          <Image source={{ uri: msg.attachment.imageUrl }} style={styles.image} />
+        )}
+      </View>
+
+      {hasReactions && (
+        <View
+          style={[
+            styles.reactionRow,
+            isOwnGroup ? styles.ownReactionRow : styles.otherReactionRow,
+          ]}
+        >
+{msg.reactions?.map((reaction) => (
+  <Text key={reaction.uuid} style={styles.reaction}>
+    {reaction.value}
+  </Text>
+))}
+        </View>
+      )}
+    </View>
+  );
+})}
       </View>
     );
   };
@@ -186,4 +223,61 @@ const styles = StyleSheet.create({
   },
   edited: { fontSize: 10, fontStyle: 'italic', color: '#555' },
   image: { width: 150, height: 100, marginTop: 6, borderRadius: 8 },
+
+
+
+reactionText: {
+  fontSize: 13,
+  fontWeight: '500',
+},
+
+
+
+messageWrapper: {
+  position: 'relative',
+},
+
+messageWithReactionsSpacing: {
+  marginBottom: 20, // adjust to give space for reactions
+},
+
+reactionRow: {
+  flexDirection: 'row',
+  alignSelf: 'flex-end',
+  backgroundColor: '#fff',
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  marginTop: -8,         // ✅ This pulls the row closer to the bubble
+  marginRight: 8,        // ✅ Align to right side of bubble
+  borderRadius: 20,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
+  shadowRadius: 1,
+  elevation: 1,
+},
+
+
+ownReactionRow: {
+  alignSelf: 'flex-end',
+  marginRight: 12,
+},
+
+otherReactionRow: {
+  alignSelf: 'flex-start',
+  marginLeft: 12,
+},
+
+reaction: {
+  fontSize: 16,
+  marginHorizontal: 2,
+},
+
+
+
 });
+
+
+
+
+
