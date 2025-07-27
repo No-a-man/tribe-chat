@@ -1,11 +1,35 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, FlatList, Image, StyleSheet,
-  TextInput, TouchableOpacity, KeyboardAvoidingView, Platform
+  TextInput, TouchableOpacity, KeyboardAvoidingView,
+  Platform, SafeAreaView,
 } from 'react-native';
 import { useMessageStore } from '../stores/messageStore';
 import { useParticipantStore } from '../stores/participantStore';
 import { groupMessages } from '../utils/groupMessages';
+
+// --- Fallback Image Component ---
+function ImageWithFallback({ uri, style }: { uri: string, style: any }) {
+  const [error, setError] = useState(false);
+
+  if (error) {
+    return (
+      <View style={[style, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#2b2b2b' }]}>
+        <Text style={{ color: '#fff', fontSize: 12 }}>Unable to download image</Text>
+       
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri }}
+      style={style}
+      resizeMode="cover"
+      onError={() => setError(true)}
+    />
+  );
+}
 
 interface Reaction {
   uuid: string;
@@ -42,7 +66,6 @@ export default function ChatScreen() {
   const participants = useParticipantStore(s => s.list) as Participant[];
   const [input, setInput] = useState('');
 
-  // Map of all messages for fast lookup by uuid
   const messageMap = useMemo(() => {
     const map: { [uuid: string]: Message } = {};
     messages.forEach(m => { map[m.uuid] = m; });
@@ -61,9 +84,8 @@ export default function ChatScreen() {
     return groupMessages(sortedMessages);
   }, [messages]);
 
-  const currentUserId = 'you';
+  const currentUserId = 'you'; // Replace with your actual user/session id
 
-  // Message send handler
   const sendMessage = () => {
     if (input.trim() === '') return;
     useMessageStore.getState().addMessage({
@@ -83,24 +105,24 @@ export default function ChatScreen() {
     const isOwnGroup = firstMessage.authorUuid === currentUserId;
 
     return (
-      <View style={[styles.messageGroupContainer, isOwnGroup ? styles.ownMessageGroup : styles.otherMessageGroup]}>
+      <View style={[
+        styles.messageGroupContainer,
+        isOwnGroup ? styles.ownMessageGroup : styles.otherMessageGroup
+      ]}>
         {!isOwnGroup && (
           <View style={styles.header}>
             <Image source={{ uri: author?.avatarUrl }} style={styles.avatar} />
             <Text style={styles.name}>{author?.name ?? 'Unknown'}</Text>
           </View>
         )}
-
         {messageGroup.map((msg, msgIndex) => {
           const hasReactions = msg.reactions && msg.reactions.length > 0;
           const isEdited = msg.updatedAt && msg.updatedAt !== msg.sentAt;
           const time = new Date(Number(msg.sentAt)).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
+            hour: '2-digit', minute: '2-digit'
           });
-
-          // Find quoted/original message if replyToMessageUuid is set
           const quotedMsg = msg.replyToMessageUuid ? messageMap[msg.replyToMessageUuid] : null;
+          const hasImage = Array.isArray(msg.attachments) && msg.attachments.length > 0 && msg.attachments[0].type === 'image';
 
           return (
             <View
@@ -127,21 +149,18 @@ export default function ChatScreen() {
                 {isEdited ? <Text style={styles.edited}> (edited)</Text> : null}
               </Text>
 
-{/* Show image if this message has an image attachment */}
-{Array.isArray(msg.attachments) && msg.attachments.length > 0 && msg.attachments[0].type === 'image' && (
-  <Image
-    source={{ uri: msg.attachments[0].url }}
-    style={[
-      styles.image,
-      // Optionally, you can scale based on attachment width/height
-      msg.attachments[0].width && msg.attachments[0].height
-        ? { width: Math.min(200, msg.attachments[0].width), height: Math.min(200, msg.attachments[0].height) }
-        : {}
-    ]}
-    resizeMode="cover"
-  />
-)}
-
+              {/* Show image if message has image attachment */}
+              {hasImage && (
+                <ImageWithFallback
+                  uri={msg.attachments![0].url}
+                  style={[
+                    styles.image,
+                    msg.attachments![0].width && msg.attachments![0].height
+                      ? { width: Math.min(200, msg.attachments![0].width), height: Math.min(200, msg.attachments![0].height) }
+                      : {}
+                  ]}
+                />
+              )}
 
               <View style={styles.bottomRowContainer}>
                 <Text style={styles.timestamp}>{time}</Text>
@@ -163,36 +182,66 @@ export default function ChatScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {groupedMessages.length === 0 ? (
-        <Text style={{ textAlign: 'center', marginTop: 32, color: '#888' }}>
-          No messages yet
-        </Text>
-      ) : (
-        <FlatList
-          data={groupedMessages}
-          renderItem={renderItem}
-          keyExtractor={(item, index) => item[0].uuid || String(index)}
-          contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
-          inverted
-        />
-      )}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Type a message"
-          value={input}
-          onChangeText={setInput}
-        />
-        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Text style={styles.sendButtonText}>Send</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 36 : 0}
+      >
+        <View style={styles.container}>
+          {groupedMessages.length === 0 ? (
+            <Text style={{ textAlign: 'center', marginTop: 32, color: '#bbb' }}>
+              No messages yet
+            </Text>
+          ) : (
+            <FlatList
+              data={groupedMessages}
+              renderItem={renderItem}
+              keyExtractor={(item, index) => item[0].uuid || String(index)}
+              contentContainerStyle={styles.listContainer}
+              inverted
+              keyboardShouldPersistTaps="handled"
+            />
+          )}
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Type a message"
+              placeholderTextColor="#bbb"
+              value={input}
+              onChangeText={setInput}
+              onSubmitEditing={sendMessage}
+              returnKeyType="send"
+              selectionColor="#ffde59"
+            />
+            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+              <Text style={styles.sendButtonText}>Send</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#111',   // Black background
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  flex: { flex: 1 },
+  container: {
+    flex: 1,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  listContainer: {
+    padding: 16,
+    paddingBottom: 80,
+  },
   messageGroupContainer: { marginBottom: 12 },
   ownMessageGroup: { alignSelf: 'flex-end' },
   otherMessageGroup: { alignSelf: 'flex-start' },
@@ -202,20 +251,21 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   avatar: { width: 32, height: 32, borderRadius: 16, marginRight: 8 },
-  name: { fontWeight: 'bold', marginRight: 6 },
+  name: { fontWeight: 'bold', marginRight: 6, color: '#fff' },
   bubble: {
     borderRadius: 8,
     padding: 10,
     maxWidth: '80%',
     position: 'relative',
     marginBottom: 16,
+    backgroundColor: '#eee', // overwritten below
   },
   ownBubble: {
-    backgroundColor: '#d1f7c4',
+    backgroundColor: '#ffde59',  // Yellow for your messages
     alignSelf: 'flex-end',
   },
   otherBubble: {
-    backgroundColor: '#eee',
+    backgroundColor: '#e7e7e9', // Light gray for others
     alignSelf: 'flex-start',
   },
   ownConsecutiveBubble: { marginTop: 4, borderTopRightRadius: 4 },
@@ -224,14 +274,14 @@ const styles = StyleSheet.create({
   otherFirstBubble: { borderBottomLeftRadius: 4 },
   ownLastBubble: { borderTopRightRadius: 4 },
   otherLastBubble: { borderTopLeftRadius: 4 },
-  ownMessageText: { color: '#333' },
-  otherMessageText: { color: '#333' },
-  edited: { fontSize: 10, fontStyle: 'italic', color: '#555' },
+  ownMessageText: { color: '#222' },  // Black text on yellow
+  otherMessageText: { color: '#111' }, // Almost black on light gray
+  edited: { fontSize: 10, fontStyle: 'italic', color: '#777' },
   image: { width: 150, height: 100, marginTop: 6, borderRadius: 8 },
   quotedBox: {
     borderLeftWidth: 3,
-    borderLeftColor: '#1e90ff',
-    backgroundColor: '#f2f2f2',
+    borderLeftColor: '#25D366', 
+    backgroundColor: '#222',
     paddingVertical: 3,
     paddingHorizontal: 8,
     marginBottom: 6,
@@ -239,7 +289,7 @@ const styles = StyleSheet.create({
   },
   quotedText: {
     fontSize: 12,
-    color: '#555',
+    color: '#cfcfcf',
     fontStyle: 'italic',
   },
   timestamp: {
@@ -255,7 +305,7 @@ const styles = StyleSheet.create({
   },
   reactionBubble: {
     marginLeft: 6,
-    backgroundColor: '#fff',
+    backgroundColor: '#222',
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -267,42 +317,36 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
-  reactionRow: {
-    flexDirection: 'row',
-  },
-  reaction: {
-    fontSize: 16,
-    marginHorizontal: 2,
-  },
+  reactionRow: { flexDirection: 'row' },
+  reaction: { fontSize: 16, marginHorizontal: 2, color: '#fff' },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#222',
     padding: 8,
-    backgroundColor: '#fff',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    backgroundColor: '#202124', // dark input bar
+    minHeight: 50,
+   
   },
   input: {
     flex: 1,
     padding: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#333',
     marginRight: 8,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#18191a',
+    color: '#fff',
   },
   sendButton: {
-    backgroundColor: '#1e90ff',
+    backgroundColor: '#ffde59', // Yellow send button!
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
   },
   sendButtonText: {
-    color: '#fff',
+    color: '#111',
     fontWeight: 'bold',
   },
 });
