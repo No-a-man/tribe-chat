@@ -12,12 +12,17 @@ interface Message {
   authorUuid: string; // The ID of the sender
   text: string;
   sentAt: number; 
-  editedAt?: number;
-  attachment?: {
-    imageUrl?: string;  
-  };
+  attachments?: {
+    uuid: string;
+    type: string;
+    url: string;
+    width?: number;
+    height?: number;
+  }[];
 reactions?: Reaction[]; 
   updatedAt: number;
+    replyToMessageUuid?: string;
+
 }
 
 /**
@@ -37,12 +42,12 @@ export const groupMessages = (messages: Message[]): Message[][] => {
 
     // Determine if the current message was sent within 5 minutes of the previous one
     // 300000 milliseconds = 5 minutes (5 * 60 * 1000)
-    const within5Min = prevMsg
-      ? (new Date(currentMsg.sentAt).getTime() - new Date(prevMsg.sentAt).getTime()) < 300000
-      : false; // If there's no previous message, it's not "within 5 min" of one
+    // const within5Min = prevMsg
+    //   ? (new Date(currentMsg.sentAt).getTime() - new Date(prevMsg.sentAt).getTime()) < 300000
+    //   : false; // If there's no previous message, it's not "within 5 min" of one
 
     // Logic to decide whether to add to the last group or start a new one
-    if (sameSender && within5Min) {
+    if (sameSender ) {
       // If same sender and within 5 minutes, add the current message to the last group
       groups[groups.length - 1].push(currentMsg);
     } else {
