@@ -203,7 +203,6 @@ export default function ChatScreen() {
               renderItem={renderItem}
               keyExtractor={(item, index) => item[0].uuid || String(index)}
               contentContainerStyle={styles.listContainer}
-              inverted
               keyboardShouldPersistTaps="handled"
             />
           )}
